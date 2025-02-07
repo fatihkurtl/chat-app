@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat Room</title>
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4A90E2;
+      --secondary: #F3F4F6;
+      --accent: #2E3440;
+      --message-bg: #ffffff;
+      --system-msg: #FFF3CD;
+      --border-radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      background: #F8F9FA;
+      height: 100vh;
+      padding: 20px;
+      color: var(--accent);
+    }
+
+    .chat-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      height: calc(100vh - 40px);
+      background: var(--message-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .user-list {
+      background: var(--secondary);
+      padding: 20px;
+      border-right: 1px solid #E5E7EB;
+      overflow-y: auto;
+    }
+
+    .user-list-header {
+      font-size: 1.2em;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #E5E7EB;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-count {
+      font-size: 0.8em;
+      background: var(--primary);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .user-item {
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+
+    .user-item.current-user {
+      background: var(--primary);
+      color: white;
+    }
+
+    .user-item.current-user i {
+      color: white !important;
+    }
+
+    .user-item.pending {
+      background: #FFF3CD;
+      border: 1px dashed #FFC107;
+    }
+
+    .user-item .admin-controls {
+      margin-left: auto;
+      display: flex;
+      gap: 5px;
+    }
+
+    .user-item .admin-controls button {
+      padding: 4px 8px;
+      font-size: 0.8em;
+    }
+
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    .chat-box {
+      flex: 1;
+      padding: 24px 20% 24px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--message-bg);
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 80px;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: var(--border-radius);
+      max-width: 70%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      position: relative;
+      animation: fadeIn 0.3s ease;
+      background: var(--secondary);
+      align-self: flex-start;
+      margin-right: auto;
+    }
+
+    .message.own-message {
+      align-self: flex-end;
+      margin-left: auto;
+      margin-right: 0;
+      background: var(--primary);
+      color: white;
+    }
+
+    .message.own-message .message-username {
+      color: white;
+    }
+
+    .message.own-message .timestamp {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .message.system {
+      background: var(--system-msg);
+      align-self: center;
+      color: #856404;
+      max-width: 90%;
+      text-align: center;
+      margin: 10px auto;
+    }
+
+    .message::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -8px;
+      width: 0;
+      height: 0;
+      border-top: 8px solid var(--secondary);
+      border-left: 8px solid transparent;
+    }
+
+    .message.own-message::before {
+      left: auto;
+      right: -8px;
+      border-top: 8px solid var(--primary);
+      border-right: 8px solid transparent;
+      border-left: none;
+    }
+
+    .message.system::before {
+      display: none;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .message-username {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .timestamp {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    .file-preview {
+      max-width: 300px;
+      border-radius: 8px;
+      margin-top: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .input-area {
+      padding: 16px 20px;
+      background: var(--secondary);
+      border-top: 1px solid #E5E7EB;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+    }
+
+    input {
+      padding: 12px 16px;
+      border: 2px solid #E5E7EB;
+      border-radius: var(--border-radius);
+      font-size: 15px;
+      transition: border-color 0.2s;
+      background: white;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #E5E7EB;
+      color: var(--accent);
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .file-button {
+      padding: 12px;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    /* Dosya yükleme göstergesi */
+    .file-indicator {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 20px;
+      background: var(--accent);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-indicator.active {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-indicator .mdi-close {
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .file-indicator .mdi-close:hover {
+      opacity: 1;
+    }
+
+    .message-input-wrapper {
+      flex: 1;
+      height: 100%;
+    }
+
+    .message-input-wrapper input {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Modal stilleri */
+    .custom-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .custom-modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 400px;
+      position: relative;
+    }
+
+    .pending-message {
+      text-align: center;
+      color: #856404;
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="custom-modal active" id="usernameModal">
+    <div class="modal-content">
+      <h4 class="mb-4">Sohbete Katıl</h4>
+      <div class="mb-3">
+        <label for="modalUsernameInput" class="form-label">Kullanıcı Adınız</label>
+        <input type="text" class="form-control" id="modalUsernameInput" placeholder="Kullanıcı adınızı girin...">
+      </div>
+      <button class="btn btn-primary w-100" onclick="requestJoin()">Katılma İsteği Gönder</button>
+      <div id="pendingMessage" class="pending-message" style="display: none;">
+        <i class="mdi mdi-clock-outline"></i>
+        İsteğiniz admin onayı bekliyor...
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-container">
+    <div class="user-list">
+      <div class="user-list-header">
+        <div>
+          <i class="mdi mdi-account-group"></i> Aktif Kullanıcılar
+        </div>
+        <span class="user-count" id="userCount">0</span>
+      </div>
+      <div id="user-list"></div>
+    </div>
+    
+    <div class="chat-main">
+      <div class="chat-box" id="chat-box">
+        <div class="message system">Sohbete hoş geldiniz!</div>
+      </div>
+
+      <div class="input-area">
+        <div class="file-indicator" id="fileIndicator">
+          <i class="mdi mdi-file"></i>
+          <span id="fileName"></span>
+          <i class="mdi mdi-close" onclick="removeFile()"></i>
+        </div>
+        <div class="message-input-wrapper">
+          <input type="text" id="message-input" placeholder="Mesajınız...">
+        </div>
+        <input type="file" id="file-input" hidden accept=".pdf,.png,.jpg,.jpeg,.webp,.svg">
+        <button class="btn-secondary file-button" onclick="document.getElementById('file-input').click()">
+          <i class="mdi mdi-attachment"></i>
+        </button>
+        <button class="btn-primary" onclick="sendMessage()">
+          <i class="mdi mdi-send"></i> Gönder
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const ws = new WebSocket('ws://localhost:3000');
+    let username = '';
+    let isAdmin = false;
+    let pendingUsers = new Set();
+
+    const chatBox = document.getElementById('chat-box');
+    const messageInput = document.getElementById('message-input');
+    const usernameInput = document.getElementById('username-input');
+    const fileInput = document.getElementById('file-input');
+    const userList = document.getElementById('user-list');
+    const fileIndicator = document.getElementById('fileIndicator');
+    const fileName = document.getElementById('fileName');
+    const modalUsernameInput = document.getElementById('modalUsernameInput');
+    const usernameModal = document.getElementById('usernameModal');
+
+    window.onload = () => {
+      const sessionId = localStorage.getItem('sessionId');
+      const savedUsername = localStorage.getItem('username');
+      
+      if (sessionId && savedUsername) {
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            type: 'auth',
+            sessionId,
+            username: savedUsername
+          }));
+        };
+      }
+    };
+
+    function formatTimestamp(isoString) {
+      const date = new Date(isoString);
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} ${date.toLocaleDateString()}`;
+    }
+
+    async function sendMessage() {
+      const content = messageInput.value.trim();
+      const file = fileInput.files[0];
+      
+      if (!content && !file) return;
+
+      if (!username) {
+        username = usernameInput.value.trim();
+        if (!username) return alert('Kullanıcı adı girin!');
+        ws.send(JSON.stringify({ type: 'join', username }));
+        usernameInput.disabled = true;
+        return;
+      }
+
+      let fileData = null;
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/upload', { method: 'POST', body: formData });
+        fileData = await response.json();
+      }
+
+      ws.send(JSON.stringify({
+        type: 'message',
+        username,
+        content,
+        file: fileData
+      }));
+
+      messageInput.value = '';
+      fileInput.value = '';
+      fileIndicator.classList.remove('active');
+    }
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      switch(data.type) {
+        case 'authResponse':
+          if (data.success) {
+            username = localStorage.getItem('username');
+            isAdmin = data.isAdmin;
+            document.getElementById('usernameModal').classList.remove('active');
+          }
+          break;
+          
+        case 'joinResponse':
+          if (data.approved) {
+            username = modalUsernameInput.value.trim();
+            localStorage.setItem('username', username);
+            localStorage.setItem('sessionId', data.sessionId);
+            usernameModal.classList.remove('active');
+            messageInput.focus();
+          } else {
+            alert('Katılma isteğiniz reddedildi.');
+            modalUsernameInput.disabled = false;
+            document.getElementById('pendingMessage').style.display = 'none';
+          }
+          break;
+          
+        case 'history':
+          data.messages.forEach(msg => addMessage(msg));
+          break;
+          
+        case 'message':
+          addMessage(data);
+          break;
+          
+        case 'system':
+          addSystemMessage(data.text, data.timestamp);
+          break;
+          
+        case 'userList':
+          const totalUsers = data.users.length;
+          document.getElementById('userCount').textContent = totalUsers;
+          
+          userList.innerHTML = data.users.map(u => `
+            <div class="user-item ${u.pending ? 'pending' : ''} ${u.username === username ? 'current-user' : ''}">
+              <i class="mdi mdi-account-circle"></i>
+              <span>${u.username}</span>
+              ${u.pending && isAdmin ? `
+                <div class="admin-controls">
+                  <button class="btn btn-sm btn-success" onclick="handleUserRequest('${u.username}', true)">
+                    <i class="mdi mdi-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="handleUserRequest('${u.username}', false)">
+                    <i class="mdi mdi-close"></i>
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+          break;
+          
+        case 'adminStatus':
+          isAdmin = data.isAdmin;
+          break;
+      }
+    };
+
+    function addMessage(msg) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${msg.username === username ? 'own-message' : ''}`;
+      
+      let content = '';
+      if (msg.file_url) {
+        if (msg.file_type === 'image') {
+          content = `<img src="${msg.file_url}" class="file-preview">`;
+        } else {
+          content = `
+            <div class="file-attachment">
+              <i class="mdi mdi-file-document-outline"></i>
+              <a href="${msg.file_url}" target="_blank" style="color: ${msg.username === username ? 'white' : 'var(--primary)'}">
+                Dosya Eki
+              </a>
+            </div>`;
+        }
+      } else {
+        content = `<p>${msg.content}</p>`;
+      }
+
+      const usernameDisplay = msg.username === username ? '' : 
+        `<div class="message-header">
+          <span class="message-username">${msg.username}</span>
+        </div>`;
+
+      messageDiv.innerHTML = `
+        ${usernameDisplay}
+        ${content}
+        <div class="timestamp">${formatTimestamp(msg.timestamp)}</div>
+      `;
+      
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addSystemMessage(text, timestamp) {
+      const div = document.createElement('div');
+      div.className = 'message system';
+      div.innerHTML = `${text} <div class="timestamp">${formatTimestamp(timestamp)}</div>`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function requestJoin() {
+      const newUsername = modalUsernameInput.value.trim();
+      if (!newUsername) {
+        alert('Lütfen kullanıcı adı girin!');
+        return;
+      }
+
+      ws.send(JSON.stringify({ 
+        type: 'joinRequest', 
+        username: newUsername 
+      }));
+
+      document.getElementById('pendingMessage').style.display = 'block';
+      modalUsernameInput.disabled = true;
+    }
+
+    function handleUserRequest(username, approve) {
+      ws.send(JSON.stringify({
+        type: 'adminAction',
+        action: approve ? 'approve' : 'reject',
+        username: username
+      }));
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        fileName.textContent = file.name;
+        fileIndicator.classList.add('active');
+      }
+    });
+
+    function removeFile() {
+      fileInput.value = '';
+      fileIndicator.classList.remove('active');
+    }
+
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !usernameModal.classList.contains('active')) {
+        sendMessage();
+      }
+    });
+
+    modalUsernameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        requestJoin();
+      }
+    });
+
+    function logout() {
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('username');
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>
